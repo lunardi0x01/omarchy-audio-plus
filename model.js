@@ -233,6 +233,142 @@ function streamRepresentsPlayer(node, player, players, streams) {
   return streamRepresentsMprisPlayer(streamLabel(node, players, streams), playerLabel)
 }
 
+
+// ---- User overrides -------------------------------------------------
+//
+// Per-device customisation (nickname, hidden, icon) lives on this
+// widget's entry in shell.json, written through the shell's own
+// updateEntryInline API. There is no settings file of our own, so
+// nothing here does I/O -- these are pure functions over the settings
+// object the shell injects, which keeps them testable outside a shell.
+//
+// The settings object is user-writable (shell.json is a plain file the
+// user edits) and the keys are PipeWire node names, which any
+// application can influence. So every read below is defensive: no
+// throwing on malformed input, and values are shape-checked before use.
+
+var OVERRIDES_KEY = "deviceOverrides"
+
+// A nickname is rendered in the panel, so it is bounded to keep a
+// pathological settings file from producing an unusable widget.
+var MAX_NICKNAME_LENGTH = 64
+
+// Icons resolve against this allowlist and nothing else. Never let a
+// settings value reach Image.source or a filesystem path -- that would
+// turn a nickname file into an arbitrary-file-read primitive inside the
+// shell process.
+var ICON_CHOICES = [
+  { key: "speaker", glyph: "\uf028" },
+  { key: "headphones", glyph: "\uf025" },
+  { key: "headset", glyph: "\uf590" },
+  { key: "monitor", glyph: "\uf108" },
+  { key: "hdmi", glyph: "\uf26c" },
+  { key: "usb", glyph: "\uf287" },
+  { key: "bluetooth", glyph: "\uf293" },
+  { key: "microphone", glyph: "\uf130" },
+  { key: "game", glyph: "\uf11b" },
+  { key: "music", glyph: "\uf001" },
+  { key: "video", glyph: "\uf03d" },
+  { key: "chat", glyph: "\uf075" },
+  { key: "browser", glyph: "\uf268" },
+  { key: "app", glyph: "\uf013" }
+]
+
+function iconChoiceKeys() {
+  var keys = []
+  for (var i = 0; i < ICON_CHOICES.length; i++) keys.push(ICON_CHOICES[i].key)
+  return keys
+}
+
+function glyphForIconKey(key) {
+  var wanted = String(key || "")
+  for (var i = 0; i < ICON_CHOICES.length; i++)
+    if (ICON_CHOICES[i].key === wanted) return ICON_CHOICES[i].glyph
+  return ""
+}
+
+// Stable identity for an override. Node id is per-session, so it cannot
+// key anything that must survive a restart; node name is what persists.
+function overrideKey(node) {
+  if (!node) return ""
+  return String(node.name || "")
+}
+
+function isPlainObject(value) {
+  return !!value && typeof value === "object" && !(value instanceof Array)
+}
+
+function readOverrides(settings) {
+  if (!isPlainObject(settings)) return {}
+  var raw = settings[OVERRIDES_KEY]
+  return isPlainObject(raw) ? raw : {}
+}
+
+// Normalises one stored entry, dropping anything malformed rather than
+// trusting it. Returns a fully-populated record so callers never have to
+// null-check individual fields.
+function normalizeOverride(raw) {
+  var out = { nickname: "", hidden: false, icon: "" }
+  if (!isPlainObject(raw)) return out
+
+  if (typeof raw.nickname === "string") {
+    var nickname = raw.nickname.trim()
+    if (nickname.length > MAX_NICKNAME_LENGTH)
+      nickname = nickname.slice(0, MAX_NICKNAME_LENGTH)
+    out.nickname = nickname
+  }
+
+  out.hidden = raw.hidden === true
+
+  if (typeof raw.icon === "string" && glyphForIconKey(raw.icon) !== "")
+    out.icon = raw.icon
+
+  return out
+}
+
+function overrideFor(settings, node) {
+  var key = overrideKey(node)
+  if (key === "") return normalizeOverride(null)
+  return normalizeOverride(readOverrides(settings)[key])
+}
+
+// True only for an explicit user hide. Deliberately separate from
+// upstream's sinkAvailable()/omarchy-audio-sink-availability filtering:
+// folding the two together would mean a speaker-tuning change could
+// silently unhide something the user hid, or vice versa.
+function isHiddenByUser(settings, node) {
+  return overrideFor(settings, node).hidden
+}
+
+function hasOverride(record) {
+  var o = normalizeOverride(record)
+  return o.nickname !== "" || o.hidden || o.icon !== ""
+}
+
+// Builds the next overrides map. Entries that carry no customisation are
+// pruned rather than stored as empty objects, so shell.json does not
+// accumulate dead keys for every device ever seen.
+function withOverride(settings, node, patch) {
+  var key = overrideKey(node)
+  var current = readOverrides(settings)
+  var next = {}
+  for (var existing in current)
+    if (current.hasOwnProperty(existing)) next[existing] = current[existing]
+  if (key === "") return next
+
+  var merged = normalizeOverride(current[key])
+  if (isPlainObject(patch)) {
+    if (patch.nickname !== undefined) merged.nickname = String(patch.nickname || "").trim()
+    if (patch.hidden !== undefined) merged.hidden = patch.hidden === true
+    if (patch.icon !== undefined) merged.icon = String(patch.icon || "")
+  }
+  merged = normalizeOverride(merged)
+
+  if (hasOverride(merged)) next[key] = merged
+  else delete next[key]
+  return next
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     isPlaybackStream: isPlaybackStream,
@@ -257,6 +393,18 @@ if (typeof module !== "undefined") {
     matchingMprisStreamLabel: matchingMprisStreamLabel,
     unmatchedMprisStreamLabel: unmatchedMprisStreamLabel,
     streamLabel: streamLabel,
-    streamRepresentsPlayer: streamRepresentsPlayer
+    streamRepresentsPlayer: streamRepresentsPlayer,
+    OVERRIDES_KEY: OVERRIDES_KEY,
+    MAX_NICKNAME_LENGTH: MAX_NICKNAME_LENGTH,
+    ICON_CHOICES: ICON_CHOICES,
+    iconChoiceKeys: iconChoiceKeys,
+    glyphForIconKey: glyphForIconKey,
+    overrideKey: overrideKey,
+    readOverrides: readOverrides,
+    normalizeOverride: normalizeOverride,
+    overrideFor: overrideFor,
+    isHiddenByUser: isHiddenByUser,
+    hasOverride: hasOverride,
+    withOverride: withOverride
   }
 }

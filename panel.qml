@@ -78,14 +78,27 @@ Panel {
 
   readonly property var rawAudioSinks: {
     var list = []
-    for (var i = 0; i < candidateSinks.length; i++)
-      if (sinkAvailable(candidateSinks[i])) list.push(candidateSinks[i])
+    for (var i = 0; i < candidateSinks.length; i++) {
+      var n = candidateSinks[i]
+      if (!sinkAvailable(n)) continue
+      if (hiddenByUser(n)) continue
+      list.push(n)
+    }
+    // The active device is always listed even if hidden, so the panel can
+    // never reach a state where it shows nothing for what is actually
+    // playing. Hiding is about decluttering the picker, not about
+    // concealing the current output.
     if (sink && list.indexOf(sink) < 0) list.unshift(sink)
     return list
   }
 
   readonly property var rawAudioSources: {
-    var list = candidateSources.slice()
+    var list = []
+    for (var i = 0; i < candidateSources.length; i++) {
+      var n = candidateSources[i]
+      if (hiddenByUser(n)) continue
+      list.push(n)
+    }
     if (source && list.indexOf(source) < 0) list.unshift(source)
     return list
   }
@@ -484,6 +497,63 @@ Panel {
     }
   }
 
+  // ---- User overrides (nickname / hidden / icon) ----
+  //
+  // Persisted on this widget's entry in shell.json through the shell's
+  // own updateEntryInline API -- this plugin owns no settings file.
+  //
+  // Two traps, both load-bearing:
+  //
+  //  1. updateEntryInline REPLACES the entry wholesale, rebuilding it
+  //     from { id }. Every write therefore has to merge the current
+  //     settings first, or it silently drops every other key.
+  //  2. It must be called with this plugin's OWN id, not moduleName.
+  //     moduleName is "omarchy.audio" (kept as the built-in IPC target
+  //     that clonedFrom routes here), and passing that is rejected --
+  //     the capability check only grants a plugin its own entry.
+  //     bar.pluginId is the id the shell knows us by.
+  property bool editMode: false
+  property string editingKey: ""
+
+  function persistSettings(values) {
+    var entry = { id: root.bar ? root.bar.pluginId : "" }
+    for (var existing in root.settings)
+      if (existing !== "id") entry[existing] = root.settings[existing]
+    for (var key in values) {
+      if (values[key] === undefined) delete entry[key]
+      else entry[key] = values[key]
+    }
+    // Applied locally first so the control moves on the click rather than
+    // waiting for the shell.json round trip.
+    root.settings = entry
+    if (root.bar && root.bar.shell
+        && typeof root.bar.shell.updateEntryInline === "function")
+      root.bar.shell.updateEntryInline(root.bar.pluginId, entry)
+  }
+
+  function overrideFor(node) {
+    return Model.overrideFor(root.settings, node)
+  }
+
+  function setOverride(node, patch) {
+    var next = Model.withOverride(root.settings, node, patch)
+    var values = {}
+    // An empty map is removed rather than stored, so a user who resets
+    // everything leaves no residue in shell.json.
+    values[Model.OVERRIDES_KEY] = Object.keys(next).length > 0 ? next : undefined
+    persistSettings(values)
+  }
+
+  function toggleHidden(node) {
+    setOverride(node, { hidden: !overrideFor(node).hidden })
+  }
+
+  // User-hidden devices stay visible while editing, otherwise hiding one
+  // would make it permanently unreachable through the UI.
+  function hiddenByUser(node) {
+    return !root.editMode && Model.isHiddenByUser(root.settings, node)
+  }
+
   function sinkAvailable(node) {
     if (!node || !node.name || !sinkAvailabilityLoaded) return true
     var name = String(node.name)
@@ -500,6 +570,13 @@ Panel {
   }
 
   function nodeLabel(node) {
+    var nickname = overrideFor(node).nickname
+    return nickname !== "" ? nickname : Model.nodeLabel(node)
+  }
+
+  // The label this row would carry with no nickname set -- used as the
+  // editor's placeholder so the user can see what they are replacing.
+  function defaultNodeLabel(node) {
     return Model.nodeLabel(node)
   }
 
@@ -512,11 +589,13 @@ Panel {
   }
 
   function sinkGlyph(node) {
-    return Model.sinkGlyph(node)
+    var custom = Model.glyphForIconKey(overrideFor(node).icon)
+    return custom !== "" ? custom : Model.sinkGlyph(node)
   }
 
   function sourceGlyph(node) {
-    return Model.sourceGlyph(node)
+    var custom = Model.glyphForIconKey(overrideFor(node).icon)
+    return custom !== "" ? custom : Model.sourceGlyph(node)
   }
 
   function friendlyStreamLabel(label) {
@@ -563,7 +642,22 @@ Panel {
   }
 
   function streamLabel(node) {
+    var nickname = overrideFor(node).nickname
+    return nickname !== "" ? nickname
+      : Model.streamLabel(node, mprisPlayers, displayAudioStreams)
+  }
+
+  function defaultStreamLabel(node) {
     return Model.streamLabel(node, mprisPlayers, displayAudioStreams)
+  }
+
+  // Streams have no upstream per-app glyph -- the row shows a fixed
+  // speaker/mute pair. A custom icon replaces the unmuted one; the muted
+  // glyph always wins so "this app is muted" stays readable at a glance.
+  function streamGlyph(node, muted) {
+    if (muted) return "󰝟"
+    var custom = Model.glyphForIconKey(overrideFor(node).icon)
+    return custom !== "" ? custom : "󰕾"
   }
 
   function streamRepresentsPlayer(node, player) {
@@ -1168,7 +1262,7 @@ Panel {
         Text {
           id: streamMuteIcon
           textFormat: Text.PlainText
-          text: streamRow.streamMuted ? "󰝟" : "󰕾"
+          text: root.streamGlyph(streamRow.node, streamRow.streamMuted)
           color: root.bar.foreground
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.title
