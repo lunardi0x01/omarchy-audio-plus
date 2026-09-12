@@ -257,21 +257,32 @@ var MAX_NICKNAME_LENGTH = 64
 // settings value reach Image.source or a filesystem path -- that would
 // turn a nickname file into an arbitrary-file-read primitive inside the
 // shell process.
+//
+// These are Material Design Nerd Font glyphs (U+F0xxx), the same family
+// upstream's sinkGlyph()/sourceGlyph() draw from, so the picker offers
+// the icons that actually appear on the rows -- including the plain
+// speaker. An earlier version mixed in Font Awesome (U+F0xx), which both
+// looked inconsistent and left no way to pick the default speaker.
+// Anything added here must be verified to render; a codepoint absent
+// from the font shows as an empty box, not an error.
 var ICON_CHOICES = [
-  { key: "speaker", glyph: "\uf028" },
-  { key: "headphones", glyph: "\uf025" },
+  { key: "speaker", glyph: "\udb81\udcc3" },
+  { key: "volume", glyph: "\udb81\udd7e" },
+  { key: "headphones", glyph: "\udb80\udecb" },
   { key: "headset", glyph: "\udb80\udece" },
-  { key: "monitor", glyph: "\uf108" },
-  { key: "hdmi", glyph: "\uf26c" },
-  { key: "usb", glyph: "\uf287" },
-  { key: "bluetooth", glyph: "\uf293" },
-  { key: "microphone", glyph: "\uf130" },
-  { key: "game", glyph: "\uf11b" },
-  { key: "music", glyph: "\uf001" },
-  { key: "video", glyph: "\uf03d" },
-  { key: "chat", glyph: "\uf075" },
-  { key: "browser", glyph: "\uf268" },
-  { key: "app", glyph: "\uf013" }
+  { key: "microphone", glyph: "\udb80\udf6c" },
+  { key: "bluetooth", glyph: "\udb80\udcaf" },
+  { key: "monitor", glyph: "\udb80\udf79" },
+  { key: "television", glyph: "\udb81\udd02" },
+  { key: "laptop", glyph: "\udb80\udf22" },
+  { key: "usb", glyph: "\udb80\ude64" },
+  { key: "camera", glyph: "\udb80\udd00" },
+  { key: "controller", glyph: "\udb80\udeb4" },
+  { key: "music", glyph: "\udb80\udf87" },
+  { key: "video", glyph: "\udb81\udd67" },
+  { key: "chat", glyph: "\udb80\udf61" },
+  { key: "web", glyph: "\udb81\udd9f" },
+  { key: "cog", glyph: "\udb81\udc93" }
 ]
 
 function iconChoiceKeys() {
