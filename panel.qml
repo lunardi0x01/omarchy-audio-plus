@@ -178,16 +178,14 @@ Panel {
   property int selectedIndex: -1
   property bool cursorActive: false
 
-  // "header" is a virtual section for the hero output mute toggle; it sits
-  // above the output section so the speaker can be muted from the keyboard.
-  readonly property bool headerHasCursor: cursorActive && focusSection === "header"
   // Only channels that actually exist get a vote. A box with no default source
   // would otherwise report "input unmuted" forever, leaving the hero switch
   // able to mute but never to unmute.
   readonly property bool hasOutput: !!(volumeSink && volumeSink.audio)
   readonly property bool hasInput: !!(source && source.audio)
+  // Retained for the bar icon's right-click "mute everything" shortcut,
+  // which is now the only combined control.
   readonly property bool anyAudible: (hasOutput && !outputMuted) || (hasInput && !inputMuted)
-  readonly property string toggleHint: anyAudible ? "Mute" : "Unmute"
 
   readonly property color hoverFill: bar
     ? Style.hoverFillFor(bar.foreground, Color.accent)
@@ -229,10 +227,6 @@ Panel {
   function moveCursor(delta) {
     var sections = visibleSections
     if (sections.length === 0) return
-    if (focusSection === "header") {
-      if (delta > 0) { focusSection = sections[0]; selectedIndex = sectionHasSlider(sections[0]) ? -1 : 0 }
-      return
-    }
     var sIdx = sections.indexOf(focusSection)
     if (sIdx < 0) { focusSection = sections[0]; selectedIndex = sectionHasSlider(focusSection) ? -1 : 0; return }
 
@@ -255,16 +249,10 @@ Panel {
         focusSection = sections[sIdx - 1]
         var prevMax = sectionCount(focusSection) - 1
         selectedIndex = prevMax >= 0 ? prevMax : (sectionHasSlider(focusSection) ? -1 : 0)
-      } else {
-        focusSection = "header"
       }
+      // Nothing above the first section any more -- the hero switch that
+      // used to live there is gone -- so the cursor simply stays put.
     }
-  }
-
-  function setHeaderCursor() {
-    cursorActive = true
-    focusSection = "header"
-    selectedIndex = -1
   }
 
   function moveSection(delta) {
@@ -301,7 +289,6 @@ Panel {
 
   // Enter/Space: activate whatever the cursor is on.
   function activateCursor() {
-    if (focusSection === "header") { toggleAllMuted(); return }
     if (focusSection === "output") {
       if (selectedIndex === -1) { toggleOutputMute(); return }
       var sink = displayAudioSinks[selectedIndex]
@@ -395,10 +382,6 @@ Panel {
   function clampCursor() {
     var sections = visibleSections
     if (!sections || !sections.length) return
-    // "header" is virtual and never appears in visibleSections, so it has to
-    // be let through: muting republishes the PipeWire snapshot, and clamping
-    // would knock the cursor off the hero switch on every toggle.
-    if (focusSection === "header") return
     if (sections.indexOf(focusSection) < 0) {
       focusSection = visibleSections[0]
       selectedIndex = sectionHasSlider(focusSection) ? -1 : 0
@@ -813,7 +796,7 @@ Panel {
           Item {
             id: heroItem
             width: parent.width
-            implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, powerSwitch.implicitHeight)
+            implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, editToggle.implicitHeight)
 
             // Status only — the switch owns muting, mouse and keyboard alike.
             Text {
@@ -840,8 +823,7 @@ Panel {
               foreground: root.bar.foreground
               fontFamily: root.bar.fontFamily
               selected: root.editMode
-              anchors.right: powerSwitch.left
-              anchors.rightMargin: Style.space(8)
+              anchors.right: parent.right
               anchors.verticalCenter: parent.verticalCenter
               onClicked: {
                 root.editMode = !root.editMode
@@ -851,29 +833,12 @@ Panel {
               }
             }
 
-            ToggleSwitch {
-              id: powerSwitch
-              checked: root.anyAudible
-              hasCursor: root.headerHasCursor
-              foreground: root.bar.foreground
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              onHovered: function(on) { if (on) root.setHeaderCursor() }
-              onToggled: root.toggleAllMuted()
-
-              PanelToolTip {
-                visible: powerSwitch.containsMouse
-                text: root.toggleHint
-                fontFamily: root.bar.fontFamily
-              }
-            }
-
             Column {
               id: heroLabels
               anchors.left: heroIcon.right
               anchors.leftMargin: Style.space(14)
               anchors.right: parent.right
-              anchors.rightMargin: powerSwitch.width + editToggle.width + Style.space(20)
+              anchors.rightMargin: editToggle.width + Style.space(12)
               anchors.verticalCenter: parent.verticalCenter
               spacing: Style.space(2)
 
@@ -916,7 +881,8 @@ Panel {
 
             Item {
               width: parent.width
-              implicitHeight: Math.max(outputHeader.implicitHeight, outputPercent.implicitHeight)
+              implicitHeight: Math.max(outputHeader.implicitHeight, outputPercent.implicitHeight,
+                outputMuteButton.implicitHeight)
 
               PanelSectionHeader {
                 id: outputHeader
@@ -927,6 +893,23 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
               }
 
+              // Mutes the output only. Replaces the hero's combined switch,
+              // which muted input and output together with no way to do one
+              // without the other from the mouse. The keyboard already had
+              // per-section mute (activateCursor on a section slider), so
+              // this brings the mouse to parity rather than adding a concept.
+              Button {
+                id: outputMuteButton
+                iconText: root.outputIcon(root.outputVolume)
+                tooltipText: root.outputMuted ? "Unmute output" : "Mute output"
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                selected: root.outputMuted
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                onClicked: root.toggleOutputMute()
+              }
+
               Text {
                 id: outputPercent
                 textFormat: Text.PlainText
@@ -935,8 +918,8 @@ Panel {
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
+                anchors.right: outputMuteButton.left
+                anchors.rightMargin: Style.space(8)
                 anchors.verticalCenter: parent.verticalCenter
                 opacity: root.outputMuted ? 0.5 : 1.0
               }
@@ -1003,7 +986,8 @@ Panel {
 
             Item {
               width: parent.width
-              implicitHeight: Math.max(microphoneHeader.implicitHeight, microphonePercent.implicitHeight)
+              implicitHeight: Math.max(microphoneHeader.implicitHeight, microphonePercent.implicitHeight,
+                inputMuteButton.implicitHeight)
 
               PanelSectionHeader {
                 id: microphoneHeader
@@ -1014,6 +998,18 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
               }
 
+              Button {
+                id: inputMuteButton
+                iconText: root.inputIcon()
+                tooltipText: root.inputMuted ? "Unmute input" : "Mute input"
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                selected: root.inputMuted
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                onClicked: root.toggleInputMute()
+              }
+
               Text {
                 id: microphonePercent
                 textFormat: Text.PlainText
@@ -1022,8 +1018,8 @@ Panel {
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
+                anchors.right: inputMuteButton.left
+                anchors.rightMargin: Style.space(8)
                 anchors.verticalCenter: parent.verticalCenter
                 opacity: root.inputMuted ? 0.5 : 1.0
               }
