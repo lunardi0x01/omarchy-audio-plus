@@ -749,7 +749,14 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(560))
+    // No arbitrary height cap: the panel sizes to its content and grows
+    // or shrinks as devices, apps, and open editors come and go.
+    // fittedContentHeight already clamps to availableCardHeight, which is
+    // the screen minus the bar, gap, and margin -- so the only remaining
+    // limit is the physical one. Upstream capped this at Style.space(560),
+    // which on a machine with a few devices pushed the app mixer off the
+    // bottom of a panel that gave no sign it scrolled.
+    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight)
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -784,11 +791,12 @@ Panel {
         anchors.fill: parent
         clip: true
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-        // AlwaysOn, not AsNeeded, when the content overflows. AsNeeded
-        // renders nothing until a scroll is already underway, so the
-        // sections past the fold -- the app mixer, usually, since it is
-        // last -- looked like empty headings rather than content you
-        // could reach. The bar is the only cue that there is more.
+        // Now that the panel sizes to its content, this only engages when
+        // the content genuinely exceeds the screen -- many devices, or an
+        // editor open on a short display. Kept AlwaysOn rather than
+        // AsNeeded for that case: AsNeeded draws nothing until a scroll is
+        // already underway, which is what made a section past the fold
+        // look like an empty heading instead of reachable content.
         ScrollBar.vertical.policy: panelColumn.implicitHeight > height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
         Binding {
           target: scrollArea.contentItem
