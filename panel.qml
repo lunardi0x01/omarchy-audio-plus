@@ -818,6 +818,26 @@ Panel {
             // Compact on/off switch on the trailing edge of the hero, and the
             // header's only cursor target. Checked means something is still
             // audible, so muting everything reads as switching audio off.
+            // Edit-mode disclosure. Off by default so the panel is
+            // visually identical to upstream until the user opts in.
+            Button {
+              id: editToggle
+              iconText: "\uf013"
+              tooltipText: root.editMode ? "Done editing" : "Rename, hide, or re-icon entries"
+              foreground: root.bar.foreground
+              fontFamily: root.bar.fontFamily
+              selected: root.editMode
+              anchors.right: powerSwitch.left
+              anchors.rightMargin: Style.space(8)
+              anchors.verticalCenter: parent.verticalCenter
+              onClicked: {
+                root.editMode = !root.editMode
+                // Leaving edit mode must also collapse any open editor,
+                // otherwise it would stay mounted but unreachable.
+                if (!root.editMode) root.editingKey = ""
+              }
+            }
+
             ToggleSwitch {
               id: powerSwitch
               checked: root.anyAudible
@@ -840,7 +860,7 @@ Panel {
               anchors.left: heroIcon.right
               anchors.leftMargin: Style.space(14)
               anchors.right: parent.right
-              anchors.rightMargin: powerSwitch.width + Style.space(12)
+              anchors.rightMargin: powerSwitch.width + editToggle.width + Style.space(20)
               anchors.verticalCenter: parent.verticalCenter
               spacing: Style.space(2)
 
@@ -1077,7 +1097,7 @@ Panel {
             visible: root.displayAudioStreams.length > 0
 
             PanelSectionHeader {
-              text: "SOURCES"
+              text: "APPS"
               foreground: root.bar.foreground
               fontFamily: root.bar.fontFamily
             }
@@ -1116,38 +1136,57 @@ Panel {
     foreground: root.bar.foreground
     fill: root.hoverFill
     currentFill: root.selectedFill
-    implicitHeight: sinkInner.implicitHeight + Style.spacing.xl
+    implicitHeight: sinkColumn.implicitHeight + Style.spacing.xl
 
-    Row {
-      id: sinkInner
+    Column {
+      id: sinkColumn
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
       anchors.leftMargin: Style.space(6)
       anchors.rightMargin: Style.space(6)
-      spacing: Style.space(8)
 
-      Text {
-        textFormat: Text.PlainText
-        text: root.sinkGlyph(sinkRow.node)
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.title
-        width: Style.space(22)
-        horizontalAlignment: Text.AlignHCenter
-        anchors.verticalCenter: parent.verticalCenter
+      Row {
+        id: sinkInner
+        width: parent.width
+        spacing: Style.space(8)
+
+        Text {
+          textFormat: Text.PlainText
+          text: root.sinkGlyph(sinkRow.node)
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.title
+          width: Style.space(22)
+          horizontalAlignment: Text.AlignHCenter
+          anchors.verticalCenter: parent.verticalCenter
+          // A hidden entry is only on screen because edit mode is on;
+          // dimming it keeps that state legible at a glance.
+          opacity: root.overrideFor(sinkRow.node).hidden ? 0.45 : 1.0
+        }
+
+        Text {
+          textFormat: Text.PlainText
+          text: root.nodeLabel(sinkRow.node)
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.body
+          font.bold: sinkRow.isActive
+          elide: Text.ElideRight
+          width: parent.width - Style.space(22) - Style.space(8)
+            - (sinkEditButtons.visible ? sinkEditButtons.width + Style.space(8) : 0)
+          anchors.verticalCenter: parent.verticalCenter
+          opacity: root.overrideFor(sinkRow.node).hidden ? 0.45 : 1.0
+        }
+
+        RowEditButtons { id: sinkEditButtons; node: sinkRow.node }
       }
 
-      Text {
-        textFormat: Text.PlainText
-        text: root.nodeLabel(sinkRow.node)
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.body
-        font.bold: sinkRow.isActive
-        elide: Text.ElideRight
-        width: parent.width - Style.space(22) - Style.space(8)
-        anchors.verticalCenter: parent.verticalCenter
+      OverrideEditor {
+        width: parent.width
+        node: sinkRow.node
+        defaultLabel: root.defaultNodeLabel(sinkRow.node)
+        visible: root.editingKey !== "" && root.editingKey === Model.overrideKey(sinkRow.node)
       }
     }
 
@@ -1177,38 +1216,55 @@ Panel {
     foreground: root.bar.foreground
     fill: root.hoverFill
     currentFill: root.selectedFill
-    implicitHeight: sourceInner.implicitHeight + Style.spacing.xl
+    implicitHeight: sourceColumn.implicitHeight + Style.spacing.xl
 
-    Row {
-      id: sourceInner
+    Column {
+      id: sourceColumn
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
       anchors.leftMargin: Style.space(6)
       anchors.rightMargin: Style.space(6)
-      spacing: Style.space(8)
 
-      Text {
-        textFormat: Text.PlainText
-        text: root.sourceGlyph(sourceRow.node)
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.title
-        width: Style.space(22)
-        horizontalAlignment: Text.AlignHCenter
-        anchors.verticalCenter: parent.verticalCenter
+      Row {
+        id: sourceInner
+        width: parent.width
+        spacing: Style.space(8)
+
+        Text {
+          textFormat: Text.PlainText
+          text: root.sourceGlyph(sourceRow.node)
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.title
+          width: Style.space(22)
+          horizontalAlignment: Text.AlignHCenter
+          anchors.verticalCenter: parent.verticalCenter
+          opacity: root.overrideFor(sourceRow.node).hidden ? 0.45 : 1.0
+        }
+
+        Text {
+          textFormat: Text.PlainText
+          text: root.nodeLabel(sourceRow.node)
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.body
+          font.bold: sourceRow.isActive
+          elide: Text.ElideRight
+          width: parent.width - Style.space(22) - Style.space(8)
+            - (sourceEditButtons.visible ? sourceEditButtons.width + Style.space(8) : 0)
+          anchors.verticalCenter: parent.verticalCenter
+          opacity: root.overrideFor(sourceRow.node).hidden ? 0.45 : 1.0
+        }
+
+        RowEditButtons { id: sourceEditButtons; node: sourceRow.node }
       }
 
-      Text {
-        textFormat: Text.PlainText
-        text: root.nodeLabel(sourceRow.node)
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.body
-        font.bold: sourceRow.isActive
-        elide: Text.ElideRight
-        width: parent.width - Style.space(22) - Style.space(8)
-        anchors.verticalCenter: parent.verticalCenter
+      OverrideEditor {
+        width: parent.width
+        node: sourceRow.node
+        defaultLabel: root.defaultNodeLabel(sourceRow.node)
+        visible: root.editingKey !== "" && root.editingKey === Model.overrideKey(sourceRow.node)
       }
     }
 
@@ -1290,6 +1346,7 @@ Panel {
           font.bold: streamRow.isActive
           elide: Text.ElideRight
           width: parent.width - streamMuteIcon.width - streamPct.width - Style.space(16)
+            - (streamEditButtons.visible ? streamEditButtons.width + Style.space(8) : 0)
           anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -1306,6 +1363,8 @@ Panel {
           anchors.verticalCenter: parent.verticalCenter
           opacity: streamRow.streamMuted ? 0.5 : 1.0
         }
+
+        RowEditButtons { id: streamEditButtons; node: streamRow.node }
       }
 
       PanelSlider {
@@ -1325,6 +1384,13 @@ Panel {
             streamRow.node.audio.muted = !streamRow.node.audio.muted
         }
       }
+
+      OverrideEditor {
+        width: parent.width
+        node: streamRow.node
+        defaultLabel: root.defaultStreamLabel(streamRow.node)
+        visible: root.editingKey !== "" && root.editingKey === Model.overrideKey(streamRow.node)
+      }
     }
 
     MouseArea {
@@ -1339,4 +1405,103 @@ Panel {
       }
     }
   }
+
+  // Trailing controls on a device/stream row while edit mode is on: hide
+  // toggle and an editor disclosure. Kept out of the normal row so the
+  // panel looks untouched until the user opts into editing.
+  component RowEditButtons: Row {
+    id: editButtons
+    property var node
+    readonly property string keyValue: Model.overrideKey(node)
+    readonly property bool isHidden: root.overrideFor(node).hidden
+    readonly property bool isEditing: keyValue !== "" && root.editingKey === keyValue
+
+    visible: root.editMode && keyValue !== ""
+    spacing: Style.space(4)
+    anchors.verticalCenter: parent.verticalCenter
+
+    Button {
+      iconText: editButtons.isHidden ? "\uf070" : "\uf06e"
+      tooltipText: editButtons.isHidden ? "Show this entry" : "Hide this entry"
+      foreground: root.bar.foreground
+      fontFamily: root.bar.fontFamily
+      opacity: editButtons.isHidden ? 0.5 : 1.0
+      onClicked: root.toggleHidden(editButtons.node)
+    }
+
+    Button {
+      iconText: "\uf304"
+      tooltipText: "Rename or change icon"
+      foreground: root.bar.foreground
+      fontFamily: root.bar.fontFamily
+      selected: editButtons.isEditing
+      onClicked: root.editingKey = editButtons.isEditing ? "" : editButtons.keyValue
+    }
+  }
+
+  // Inline editor revealed under a row. Nickname is applied on accept or
+  // focus loss rather than per keystroke, so a half-typed name never
+  // reaches shell.json.
+  component OverrideEditor: Column {
+    id: editor
+    property var node
+    property string defaultLabel: ""
+    readonly property var record: root.overrideFor(node)
+
+    spacing: Style.space(6)
+    topPadding: Style.space(4)
+    bottomPadding: Style.space(8)
+
+    TextField {
+      id: nicknameField
+      width: parent.width - Style.space(12)
+      x: Style.space(6)
+      text: editor.record.nickname
+      // Showing the computed label as placeholder makes it obvious what a
+      // blank field falls back to.
+      placeholderText: editor.defaultLabel
+      foreground: root.bar.foreground
+      font.family: root.bar.fontFamily
+      font.pixelSize: Style.font.body
+      maximumLength: Model.MAX_NICKNAME_LENGTH
+      onAccepted: root.setOverride(editor.node, { nickname: text })
+      onActiveFocusChanged: if (!activeFocus) root.setOverride(editor.node, { nickname: text })
+    }
+
+    Flow {
+      width: parent.width - Style.space(12)
+      x: Style.space(6)
+      spacing: Style.space(2)
+
+      Repeater {
+        model: Model.ICON_CHOICES
+        Button {
+          required property var modelData
+          iconText: modelData.glyph
+          tooltipText: modelData.key
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+          selected: editor.record.icon === modelData.key
+          // Clicking the active icon clears it, so there is always a way
+          // back to the computed default without a separate control.
+          onClicked: root.setOverride(editor.node,
+            { icon: editor.record.icon === modelData.key ? "" : modelData.key })
+        }
+      }
+    }
+
+    Button {
+      x: Style.space(6)
+      text: "Reset"
+      bordered: true
+      foreground: root.bar.foreground
+      fontFamily: root.bar.fontFamily
+      onClicked: {
+        nicknameField.text = ""
+        root.setOverride(editor.node, { nickname: "", icon: "", hidden: false })
+        root.editingKey = ""
+      }
+    }
+  }
+
 }
