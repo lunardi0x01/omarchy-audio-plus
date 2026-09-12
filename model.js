@@ -260,7 +260,7 @@ var MAX_NICKNAME_LENGTH = 64
 var ICON_CHOICES = [
   { key: "speaker", glyph: "\uf028" },
   { key: "headphones", glyph: "\uf025" },
-  { key: "headset", glyph: "\uf590" },
+  { key: "headset", glyph: "\udb80\udece" },
   { key: "monitor", glyph: "\uf108" },
   { key: "hdmi", glyph: "\uf26c" },
   { key: "usb", glyph: "\uf287" },
