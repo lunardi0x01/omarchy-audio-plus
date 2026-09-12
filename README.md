@@ -1,4 +1,4 @@
-# Omarchy Audio
+# Omarchy Audio Plus
 
 An Omarchy bar widget for audio: volume slider, output/input device
 pickers, and a per-application mixer.
@@ -65,7 +65,7 @@ graph and so does not appear.
 ## Install
 
 ```bash
-git clone https://github.com/lunardi0x01/<repo> \
+git clone https://github.com/lunardi0x01/omarchy-audio-plus \
   ~/.config/omarchy/plugins/lunardi0x01.audio
 omarchy-shell shell rescanPlugins
 omarchy plugin enable lunardi0x01.audio

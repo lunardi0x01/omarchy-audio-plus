@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "lunardi0x01.audio",
-  "name": "Omarchy Audio",
+  "name": "Omarchy Audio Plus",
   "version": "0.1.0",
   "author": "James Lunardi",
-  "description": "Volume slider, output picker, per-app mixer",
+  "description": "Audio panel with per-entry renaming, hiding, and custom icons, on top of the volume slider, device pickers, and per-app mixer.",
   "kinds": [
     "bar-widget"
   ],
@@ -12,8 +12,8 @@
     "barWidget": "panel.qml"
   },
   "barWidget": {
-    "displayName": "Audio",
-    "description": "Volume slider, output picker, per-app mixer",
+    "displayName": "Audio Plus",
+    "description": "Volume, device pickers, and per-app mixer, with renameable and hideable entries.",
     "category": "Audio",
     "allowMultiple": false
   },
