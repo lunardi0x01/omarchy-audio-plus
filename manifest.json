@@ -1,20 +1,24 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.audio",
-  "name": "Audio",
-  "version": "1.0.0",
-  "author": "Omarchy",
+  "id": "lunardi0x01.audio",
+  "name": "Omarchy Audio",
+  "version": "0.1.0",
+  "author": "James Lunardi",
   "description": "Volume slider, output picker, per-app mixer",
   "kinds": [
     "bar-widget"
   ],
   "entryPoints": {
-    "barWidget": "Panel.qml"
+    "barWidget": "panel.qml"
   },
   "barWidget": {
     "displayName": "Audio",
     "description": "Volume slider, output picker, per-app mixer",
     "category": "Audio",
     "allowMultiple": false
+  },
+  "license": "MIT",
+  "omarchy": {
+    "clonedFrom": "omarchy.audio"
   }
 }

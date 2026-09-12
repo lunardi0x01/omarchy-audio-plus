@@ -6,7 +6,7 @@ import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import qs.Ui
 import qs.Commons
-import "Model.js" as Model
+import "model.js" as Model
 
 Panel {
   id: root
