@@ -42,11 +42,16 @@ survive restarts. This plugin writes no files of its own.
   mixer.
 - **Keyboard navigation** throughout the panel.
 
+**The panel sizes itself to its content.** It grows and shrinks as
+devices appear, apps start playing, and editors open, bounded only by the
+screen. Upstream capped it at a fixed height and let a scrollbar absorb
+the rest, which on a machine with a few devices pushed the app mixer
+below the fold — a working feature that looked broken. A scrollbar now
+appears only if the content genuinely exceeds the screen.
+
 A note on the app mixer: it lists applications that are *currently
 producing audio*. An idle Spotify or Discord has no stream in the audio
-graph and so does not appear. The panel's scrollbar is also shown
-whenever content overflows, rather than only while scrolling — otherwise
-a section past the fold looks like an empty heading.
+graph and so does not appear.
 
 ## Requirements
 
