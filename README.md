@@ -18,6 +18,10 @@ Everything upstream's audio widget does, plus per-entry customisation.
   pickers. Hidden entries stay visible while edit mode is on, so you can
   always get one back, and the *active* output is never hidden from you.
 - **Choose an icon per entry**, from a fixed set of glyphs.
+- **Separate mute buttons for output and input**, one in each section
+  header. Upstream had a single switch in the panel header that muted
+  both at once, with no way to do one without the other. Right-clicking
+  the bar icon still mutes everything together.
 
 Turn on edit mode with the gear in the panel header; each row grows a
 hide toggle and an editor. The panel looks exactly like upstream's until
