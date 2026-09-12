@@ -784,7 +784,12 @@ Panel {
         anchors.fill: parent
         clip: true
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-        ScrollBar.vertical.policy: panelColumn.implicitHeight > height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+        // AlwaysOn, not AsNeeded, when the content overflows. AsNeeded
+        // renders nothing until a scroll is already underway, so the
+        // sections past the fold -- the app mixer, usually, since it is
+        // last -- looked like empty headings rather than content you
+        // could reach. The bar is the only cue that there is more.
+        ScrollBar.vertical.policy: panelColumn.implicitHeight > height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
         Binding {
           target: scrollArea.contentItem
           property: "interactive"
