@@ -1194,6 +1194,11 @@ Panel {
       anchors.fill: parent
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
+      // Behind the row content. A later sibling paints on top, so at the
+      // default z this swallowed clicks aimed at the edit buttons and
+      // switched the device instead. Text does not accept mouse events,
+      // so select-the-row still works through it.
+      z: -1
       onContainsMouseChanged: if (containsMouse) {
         root.cursorActive = true
         root.focusSection = "output"
@@ -1272,6 +1277,11 @@ Panel {
       anchors.fill: parent
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
+      // Behind the row content. A later sibling paints on top, so at the
+      // default z this swallowed clicks aimed at the edit buttons and
+      // switched the device instead. Text does not accept mouse events,
+      // so select-the-row still works through it.
+      z: -1
       onContainsMouseChanged: if (containsMouse) {
         root.cursorActive = true
         root.focusSection = "input"
@@ -1430,7 +1440,7 @@ Panel {
     }
 
     Button {
-      iconText: "\uf304"
+      iconText: "\udb80\udfeb"
       tooltipText: "Rename or change icon"
       foreground: root.bar.foreground
       fontFamily: root.bar.fontFamily
