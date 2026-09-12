@@ -275,7 +275,7 @@ var ICON_CHOICES = [
   { key: "monitor", glyph: "\udb80\udf79" },
   { key: "television", glyph: "\udb81\udd02" },
   { key: "laptop", glyph: "\udb80\udf22" },
-  { key: "usb", glyph: "\udb80\ude64" },
+  { key: "usb", glyph: "\udb81\udd53" },
   { key: "camera", glyph: "\udb80\udd00" },
   { key: "controller", glyph: "\udb80\udeb4" },
   { key: "music", glyph: "\udb80\udf87" },
